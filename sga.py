@@ -31,21 +31,21 @@ st.header('SGA - Senhas')
 
 @st.cache_resource
 def aplicar_css_no_sidebar():
-    css_file_path = os.path.join("app", "style.css")
+    css_file_path = "style.css"
+    css_file_path = os.path.join(os.getcwd(), "style.css")
     with open(css_file_path, encoding='utf-8') as css:
         st.markdown(f'<style>{css.read()}</style>', unsafe_allow_html=True)
 
 
 @st.cache_resource
 def aplicar_css_hide():
-    css_file_path = os.path.join("app", "styles.css")
-    with open(css_file_path, encoding='utf-8') as css:
+    css_file_paths = "styles.css"
+    css_file_paths = os.path.join(os.getcwd(), "styles.css")
+    with open(css_file_paths, encoding='utf-8') as css:
         st.markdown(f'<style>{css.read()}</style>', unsafe_allow_html=True)
 
 aplicar_css_no_sidebar()
 aplicar_css_hide()
-
-
 
 
 TEMP_FILE = 'last_called.json'
