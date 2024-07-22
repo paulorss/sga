@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,100..1000&display=swap');
+
+body * {
+    font-family: 'Roboto Flex', sans-serif;
+    font-size: 16px; /* Tamanho da fonte */
+    font-optical-sizing: auto;
+    font-style: normal;
+    text-align: justify; /* Alinhamento justificado */
+    text-rendering: optimizeLegibility; /* Otimiza a legibilidade */
+    -webkit-font-smoothing: antialiased; /* Suavização de fonte para navegadores WebKit */
+    -moz-osx-font-smoothing: grayscale; /* Suavização de fonte para Firefox no OS X */
+}
+
+/* Estilização de botões */
+button {
+    background-color: #28a745; /* Cor de fundo verde */
+    color: white; /* Cor do texto */
+    border: none; /* Sem bordas */
+    padding: 10px 20px; /* Preenchimento */
+    text-align: center; /* Alinhamento do texto */
+    text-decoration: none; /* Sem decoração de texto */
+    display: inline-block; /* Exibição inline-block */
+    font-size: 16px; /* Tamanho da fonte */
+    margin: 4px 2px; /* Margens */
+    cursor: pointer; /* Cursor em forma de ponteiro */
+    border-radius: 8px; /* Bordas arredondadas */
+}
+
+/* Para botões com a classe .btn, se estiver usando Bootstrap */
+.btn {
+    background-color: #28a745; /* Cor de fundo verde */
+    color: white; /* Cor do texto */
+}
