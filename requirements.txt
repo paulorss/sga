@@ -1,5 +1,5 @@
 streamlit
-numpy
+numpy==1.24.3
 streamlit-autorefresh
 reportlab
-hydralit_components
+hydralit_components==1.0.10
