@@ -1,4 +1,5 @@
 streamlit
+numpy
 streamlit-autorefresh
 reportlab
 hydralit_components
