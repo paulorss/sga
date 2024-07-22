@@ -1,0 +1,5 @@
+python==3.9.0
+streamlit
+streamlit-autorefresh
+reportlab
+hydralit_components
