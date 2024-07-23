@@ -17,8 +17,6 @@ import tempfile
 import hydralit_components as hc
 import json
 import os
-import pandas as pd
-import io
 
 st.set_page_config(
     page_title="SGA - Senhas",
@@ -50,8 +48,6 @@ aplicar_css_no_sidebar()
 aplicar_css_hide()
 
 
-
-
 TEMP_FILE = 'last_called.json'
 
 def update_last_called(company, senha, cpf_cnpj, tipo):
@@ -72,30 +68,6 @@ def get_last_called_from_file(company):
             data = json.load(f)
         return data['senha'], data['cpf_cnpj'], data['tipo'], data['timestamp']
     return None, None, None, 0
-
-
-
-def get_passwords_by_date(csv_file, date):
-    with open(csv_file, 'r') as file:
-        reader = csv.reader(file)
-        next(reader)  # Skip header
-        return [row for row in reader if row[4] == date]
-
-
-def generate_password_history_csv(csv_file):
-    with open(csv_file, 'r') as file:
-        reader = csv.reader(file)
-        header = next(reader)
-        rows = list(reader)
-    
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv', mode='w', newline='') as temp_file:
-        writer = csv.writer(temp_file)
-        writer.writerow(header)
-        writer.writerows(rows)
-    
-    return temp_file.name
-
 
 
 # Configuração dos arquivos
@@ -238,45 +210,41 @@ def register_page():
 
 
 def generate_password_pdf(senha, tipo, company):
-    # Register the Arial font
+    # Register a default font
     pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
 
-    # Create a BytesIO object to store the PDF
-    buffer = io.BytesIO()
+    # Create a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+        # Create the PDF
+        c = canvas.Canvas(temp_file.name, pagesize=A7)
+        c.setFont('Arial', 12)
 
-    # Create the PDF
-    c = canvas.Canvas(buffer, pagesize=A7)
-    c.setFont('Arial', 12)
+        # Draw the company name
+        c.drawString(10*mm, 60*mm, company)
 
-    # Draw the company name
-    c.drawString(10*mm, 60*mm, company)
+        # Draw the password
+        c.setFont('Arial', 24)
+        c.drawString(10*mm, 40*mm, senha)
 
-    # Draw the password
-    c.setFont('Arial', 24)
-    c.drawString(10*mm, 40*mm, senha)
+        # Draw the type
+        c.setFont('Arial', 14)
+        c.drawString(10*mm, 30*mm, f"Tipo: {tipo}")
 
-    # Draw the type
-    c.setFont('Arial', 14)
-    c.drawString(10*mm, 30*mm, f"Tipo: {tipo}")
+        # Draw the current date and time
+        now = datetime.datetime.now()
+        date_time = now.strftime("%d/%m/%Y %H:%M:%S")
+        c.setFont('Arial', 10)
+        c.drawString(10*mm, 20*mm, f"Emitido em: {date_time}")
 
-    # Draw the current date and time
-    now = datetime.datetime.now()
-    date_time = now.strftime("%d/%m/%Y %H:%M:%S")
-    c.setFont('Arial', 10)
-    c.drawString(10*mm, 20*mm, f"Emitido em: {date_time}")
+        c.save()
 
-    c.save()
-
-    # Move the buffer position to the beginning
-    buffer.seek(0)
-    return buffer
-
+    return temp_file.name            
 
 def main_app():
     csv_file = get_csv_file(st.session_state.company)
     create_csv_if_not_exists(csv_file)
 
-    st.title(f"Painel de Senhas - {st.session_state.company}")  
+    st.title(f"Painel de Senhas - {st.session_state.company}")
     
     # Inicialize o contador de atualização se não existir
     if 'update_counter' not in st.session_state:
@@ -298,7 +266,7 @@ def main_app():
         st.rerun()
 
 
-    tab1, tab2, tab3 = st.tabs(["Cadastramento e Acionamento", "Painel de Chamada", "Histórico de Senhas"])
+    tab1, tab2 = st.tabs(["Cadastramento e Acionamento", "Painel de Chamada"])
     
     with tab1:
         col1, col2 = st.columns(2)
@@ -309,43 +277,28 @@ def main_app():
             cpf_cnpj = st.text_input("CPF/CNPJ")
 
             
-            if 'last_generated_password' not in st.session_state:
-                st.session_state.last_generated_password = None
-
             if st.button("Gerar Senha"):
                 if validate_cpf_cnpj(cpf_cnpj):
                     password = generate_password("G" if queue_type == "Geral" else "P")
                     add_to_queue(csv_file, password, queue_type, cpf_cnpj)
-                    st.session_state.last_generated_password = {
-                        'password': password,
-                        'type': queue_type
-                    }
                     st.success(f"Senha gerada: {password}")
-                    st.rerun()
+                    
+                    # Generate PDF
+                    pdf_file = generate_password_pdf(password, queue_type, st.session_state.company)
+                    
+                    # Provide download link for the PDF
+                    with open(pdf_file, "rb") as file:
+                        btn = st.download_button(
+                            label="Baixar senha em PDF",
+                            data=file,
+                            file_name=f"senha_{password}.pdf",
+                            mime="application/pdf"
+                        )
+                    
+                    # Remove the temporary file
+                    os.remove(pdf_file)
                 else:
                     st.error("CPF/CNPJ inválido. Por favor, insira um número válido.")
-
-            # Exibir o botão de download se uma senha foi gerada
-            if st.session_state.last_generated_password:
-                password = st.session_state.last_generated_password['password']
-                queue_type = st.session_state.last_generated_password['type']
-                
-                # Generate PDF
-                pdf_buffer = generate_password_pdf(password, queue_type, st.session_state.company)
-                
-                # Provide download link for the PDF
-                st.download_button(
-                    label="Baixar senha em PDF",
-                    data=pdf_buffer,
-                    file_name=f"senha_{password}.pdf",
-                    mime="application/pdf",
-                    key=f"download_pdf_{password}"
-                )
-
-                # Opção para limpar a senha gerada
-                if st.button("Limpar senha gerada"):
-                    st.session_state.last_generated_password = None
-                    st.rerun()
         
         with col2:
             st.subheader("Filas de Atendimento")
@@ -406,35 +359,6 @@ def main_app():
                             theme_override=theme_neutral,
                             bar_value=100,
                             key=f"last_five_{i}_{row[1]}_{st.session_state.update_counter}")
-
-    with tab3:
-        st.subheader("Histórico de Senhas")
-        
-        # Date selection
-        selected_date = st.date_input("Selecione uma data", datetime.datetime.now())
-        date_str = selected_date.strftime("%d/%m/%Y")
-        
-        # Display passwords for the selected date
-        passwords = get_passwords_by_date(csv_file, date_str)
-        if passwords:
-            st.write(f"Senhas emitidas em {date_str}:")
-            df = pd.DataFrame(passwords, columns=['ID', 'Senha', 'Tipo', 'CPF/CNPJ', 'Data', 'Hora', 'Atendido'])
-            st.dataframe(df)
-        else:
-            st.info(f"Nenhuma senha emitida em {date_str}.")
-        
-        # Download password history
-        if st.button("Baixar Histórico de Senhas (CSV)"):
-            temp_csv = generate_password_history_csv(csv_file)
-            with open(temp_csv, "rb") as file:
-                btn = st.download_button(
-                    label="Clique para baixar",
-                    data=file,
-                    file_name=f"historico_senhas_{st.session_state.company}.csv",
-                    mime="text/csv"
-                )
-            os.remove(temp_csv)
-
 
 def main():
     if 'logged_in' not in st.session_state:
