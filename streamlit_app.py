@@ -15,62 +15,16 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import tempfile
 import hydralit_components as hc
-import json
-import os
 
 st.set_page_config(
     page_title="SGA - Senhas",
-    #page_icon=im,
     layout="wide",
     initial_sidebar_state="auto",
-    
 )
 
 st.header('SGA - Senhas')
 
-
-@st.cache_resource
-def aplicar_css_no_sidebar():
-    css_file_path = "style.css"
-    css_file_path = os.path.join(os.getcwd(), "style.css")
-    with open(css_file_path, encoding='utf-8') as css:
-        st.markdown(f'<style>{css.read()}</style>', unsafe_allow_html=True)
-
-
-@st.cache_resource
-def aplicar_css_hide():
-    css_file_paths = "styles.css"
-    css_file_paths = os.path.join(os.getcwd(), "styles.css")
-    with open(css_file_paths, encoding='utf-8') as css:
-        st.markdown(f'<style>{css.read()}</style>', unsafe_allow_html=True)
-
-aplicar_css_no_sidebar()
-aplicar_css_hide()
-
-
 TEMP_FILE = 'last_called.json'
-
-def update_last_called(company, senha, cpf_cnpj, tipo):
-    data = {
-        'senha': senha,
-        'cpf_cnpj': cpf_cnpj,
-        'tipo': tipo,
-        'timestamp': time.time()
-    }
-    file_path = os.path.join(COMPANIES_DIR, f'{company}_last_called.json')
-    with open(file_path, 'w') as f:
-        json.dump(data, f)
-
-def get_last_called_from_file(company):
-    file_path = os.path.join(COMPANIES_DIR, f'{company}_last_called.json')
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            data = json.load(f)
-        return data['senha'], data['cpf_cnpj'], data['tipo'], data['timestamp']
-    return None, None, None, 0
-
-
-# Configuração dos arquivos
 USERS_FILE = 'users.json'
 COMPANIES_DIR = 'companies'
 
@@ -114,7 +68,7 @@ def create_csv_if_not_exists(csv_file):
     if not os.path.exists(csv_file):
         with open(csv_file, 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['id', 'senha', 'tipo', 'cpf_cnpj', 'data', 'hora', 'atendido'])
+            writer.writerow(['id', 'senha', 'tipo', 'serviço', 'cpf_cnpj', 'nome', 'data', 'hora', 'atendido'])
 
 def validate_cpf_cnpj(cpf_cnpj):
     cpf_cnpj = re.sub(r'\D', '', cpf_cnpj)
@@ -123,13 +77,13 @@ def validate_cpf_cnpj(cpf_cnpj):
 def generate_password(prefix):
     return f"{prefix}{random.randint(1, 999):03d}"
 
-def add_to_queue(csv_file, senha, tipo, cpf_cnpj):
+def add_to_queue(csv_file, senha, tipo, servico, cpf_cnpj, nome):
     now = datetime.datetime.now()
     data = now.strftime("%d/%m/%Y")
     hora = now.strftime("%H:%M:%S")
     with open(csv_file, 'a', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow([get_next_id(csv_file), senha, tipo, cpf_cnpj, data, hora, 0])
+        writer.writerow([get_next_id(csv_file), senha, tipo, servico, cpf_cnpj, nome, data, hora, 0])
 
 def get_next_id(csv_file):
     with open(csv_file, 'r') as file:
@@ -139,11 +93,11 @@ def display_queue(csv_file, queue_type):
     with open(csv_file, 'r') as file:
         reader = csv.reader(file)
         next(reader)  # Skip header
-        rows = [row for row in reader if row[2] == queue_type and row[6] == '0']
+        rows = [row for row in reader if row[2] == queue_type and row[8] == '0']
     
     if rows:
         for row in rows:
-            st.markdown(f"- Senha: {row[1]} - CPF/CNPJ: {row[3]} - Emitida em: {row[4]} às {row[5]}")
+            st.markdown(f"- Senha: {row[1]} - CPF/CNPJ: {row[4]} - Nome: {row[5]} - Serviço: {row[3]} - Emitida em: {row[6]} às {row[7]}")
     else:
         st.error("Fila vazia.")
 
@@ -152,20 +106,39 @@ def call_next_password(csv_file, company):
         reader = csv.reader(file)
         rows = list(reader)
     
-    prioritario = next((row for row in rows if row[2] == 'Prioritário' and row[6] == '0'), None)
-    geral = next((row for row in rows if row[2] == 'Geral' and row[6] == '0'), None)
+    prioritario = next((row for row in rows if row[2] == 'Prioritário' and row[8] == '0'), None)
+    geral = next((row for row in rows if row[2] == 'Geral' and row[8] == '0'), None)
     
     row = prioritario or geral
     
     if row:
-        row[6] = '1'  # Marcar como atendido
+        row[8] = '1'  # Marcar como atendido
         with open(csv_file, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerows(rows)
-        update_last_called(company, row[1], row[3], row[2])
-        return row[1], row[3], row[2]
+        update_last_called(company, row[1], row[4], row[2])
+        return row[1], row[4], row[2]
     else:
         return None, None, None
+
+def update_last_called(company, senha, cpf_cnpj, tipo):
+    data = {
+        'senha': senha,
+        'cpf_cnpj': cpf_cnpj,
+        'tipo': tipo,
+        'timestamp': time.time()
+    }
+    file_path = os.path.join(COMPANIES_DIR, f'{company}_last_called.json')
+    with open(file_path, 'w') as f:
+        json.dump(data, f)
+
+def get_last_called_from_file(company):
+    file_path = os.path.join(COMPANIES_DIR, f'{company}_last_called.json')
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+        return data['senha'], data['cpf_cnpj'], data['tipo'], data['timestamp']
+    return None, None, None, 0
 
 def get_last_called_password(csv_file):
     with open(csv_file, 'r') as file:
@@ -173,10 +146,29 @@ def get_last_called_password(csv_file):
         rows = list(reader)
     
     for row in reversed(rows[1:]):  # Ignorar o cabeçalho e começar do final
-        if row[6] == '1':  # Se foi atendido
-            return row[1], row[3], row[2]  # Retorna a senha, o CPF/CNPJ e o tipo
+        if row[8] == '1':  # Se foi atendido
+            return row[1], row[4], row[2]  # Retorna a senha, o CPF/CNPJ e o tipo
     
     return None, None, None
+
+def generate_password_pdf(senha, tipo, nome, servico, company):
+    pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
+        c = canvas.Canvas(temp_file.name, pagesize=A7)
+        c.setFont('Arial', 12)
+        c.drawString(10*mm, 60*mm, company)
+        c.setFont('Arial', 24)
+        c.drawString(10*mm, 40*mm, senha)
+        c.setFont('Arial', 14)
+        c.drawString(10*mm, 30*mm, f"Tipo: {tipo}")
+        c.drawString(10*mm, 25*mm, f"Serviço: {servico}")
+        c.drawString(10*mm, 20*mm, f"Nome: {nome}")
+        now = datetime.datetime.now()
+        date_time = now.strftime("%d/%m/%Y %H:%M:%S")
+        c.setFont('Arial', 10)
+        c.drawString(10*mm, 10*mm, f"Emitido em: {date_time}")
+        c.save()
+    return temp_file.name
 
 def login_page():
     st.title("Login")
@@ -207,55 +199,19 @@ def register_page():
     else:
         st.error("Código de acesso inválido. Registro não permitido.")
 
-
-
-def generate_password_pdf(senha, tipo, company):
-    # Register a default font
-    pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
-
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
-        # Create the PDF
-        c = canvas.Canvas(temp_file.name, pagesize=A7)
-        c.setFont('Arial', 12)
-
-        # Draw the company name
-        c.drawString(10*mm, 60*mm, company)
-
-        # Draw the password
-        c.setFont('Arial', 24)
-        c.drawString(10*mm, 40*mm, senha)
-
-        # Draw the type
-        c.setFont('Arial', 14)
-        c.drawString(10*mm, 30*mm, f"Tipo: {tipo}")
-
-        # Draw the current date and time
-        now = datetime.datetime.now()
-        date_time = now.strftime("%d/%m/%Y %H:%M:%S")
-        c.setFont('Arial', 10)
-        c.drawString(10*mm, 20*mm, f"Emitido em: {date_time}")
-
-        c.save()
-
-    return temp_file.name            
-
 def main_app():
     csv_file = get_csv_file(st.session_state.company)
     create_csv_if_not_exists(csv_file)
 
     st.title(f"Painel de Senhas - {st.session_state.company}")
     
-    # Inicialize o contador de atualização se não existir
     if 'update_counter' not in st.session_state:
         st.session_state.update_counter = 0
 
-    # Use st_autorefresh para atualizar a página
     st_autorefresh(interval=500, key=f"autorefresh_{st.session_state.update_counter}")
     if 'last_called' not in st.session_state:
         st.session_state.last_called = get_last_called_password(csv_file)
 
-    # Adicione isso no início da função
     if 'last_update' not in st.session_state:
         st.session_state.last_update = 0
     
@@ -265,40 +221,39 @@ def main_app():
         st.session_state.last_update = timestamp
         st.rerun()
 
-
     tab1, tab2 = st.tabs(["Cadastramento e Acionamento", "Painel de Chamada"])
-    
+
     with tab1:
         col1, col2 = st.columns(2)
-        
+
         with col1:
             st.subheader("Emitir Nova Senha")
+            nome = st.text_input("Nome do Cliente")
             queue_type = st.radio("Tipo de Atendimento", ["Geral", "Prioritário"])
             cpf_cnpj = st.text_input("CPF/CNPJ")
-
             
+            servicos_disponiveis = ["Consulta", "Pagamento", "Suporte Técnico", "Cadastro"]
+            servico = st.selectbox("Escolha o Serviço", servicos_disponiveis)
+
             if st.button("Gerar Senha"):
-                if validate_cpf_cnpj(cpf_cnpj):
+                if validate_cpf_cnpj(cpf_cnpj) and nome:
                     password = generate_password("G" if queue_type == "Geral" else "P")
-                    add_to_queue(csv_file, password, queue_type, cpf_cnpj)
+                    add_to_queue(csv_file, password, queue_type, servico, cpf_cnpj, nome)
                     st.success(f"Senha gerada: {password}")
-                    
-                    # Generate PDF
-                    pdf_file = generate_password_pdf(password, queue_type, st.session_state.company)
-                    
-                    # Provide download link for the PDF
+
+                    pdf_file = generate_password_pdf(password, queue_type, nome, servico, st.session_state.company)
+
                     with open(pdf_file, "rb") as file:
-                        btn = st.download_button(
+                        st.download_button(
                             label="Baixar senha em PDF",
                             data=file,
                             file_name=f"senha_{password}.pdf",
                             mime="application/pdf"
                         )
                     
-                    # Remove the temporary file
                     os.remove(pdf_file)
                 else:
-                    st.error("CPF/CNPJ inválido. Por favor, insira um número válido.")
+                    st.error("Por favor, insira um CPF/CNPJ válido e o nome do cliente.")
         
         with col2:
             st.subheader("Filas de Atendimento")
@@ -320,8 +275,6 @@ def main_app():
                 else:
                     st.info("Não há senhas na fila.")
 
-
-    
     with tab2:
         st.subheader("Senha Chamada")
         last_called_placeholder = st.empty()
@@ -348,13 +301,13 @@ def main_app():
                 reader = csv.reader(file)
                 rows = list(reader)[1:]  # Ignorar o cabeçalho
             
-            called_passwords = [row for row in reversed(rows) if row[6] == '1'][:5]  # Pegando as últimas 5 senhas chamadas
+            called_passwords = [row for row in reversed(rows) if row[8] == '1'][:5]  # Pegando as últimas 5 senhas chamadas
             
             theme_neutral = {'bgcolor': '#f9f9f9','title_color': 'orange','content_color': 'orange','progress_color': 'orange','icon_color': 'orange', 'icon': 'fa fa-question-circle'}
             
             for i, row in enumerate(called_passwords):
                 hc.info_card(title=f"Senha: {row[1]} ({row[2]})",
-                            content=f"CPF/CNPJ: {row[3][:3]}...{row[3][-3:]}", 
+                            content=f"CPF/CNPJ: {row[4][:3]}...{row[4][-3:]}", 
                             sentiment='neutral',
                             theme_override=theme_neutral,
                             bar_value=100,
