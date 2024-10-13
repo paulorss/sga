@@ -159,29 +159,29 @@ def get_last_called_password(csv_file):
     return None, None, None
 
 def generate_password_pdf(senha, tipo, nome, servico, company):
-    pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_file:
         c = canvas.Canvas(temp_file.name, pagesize=A7)
         
         # Ajustando tamanhos de fonte
-        c.setFont('Arial', 10)  # Reduzido de 12 para 10
+        c.setFont('Helvetica', 10)  # Alterado para Helvetica
         c.drawString(10*mm, 60*mm, f"Senhas - {company}")
         
-        c.setFont('Arial', 10)  # Reduzido de 24 para 20
+        c.setFont('Helvetica', 10)  # Alterado para Helvetica
         c.drawString(10*mm, 40*mm, senha)
         
-        c.setFont('Arial', 8)  # Reduzido de 14 para 12
+        c.setFont('Helvetica', 8)  # Alterado para Helvetica
         c.drawString(10*mm, 30*mm, f"Tipo: {tipo}")
         c.drawString(10*mm, 25*mm, f"Serviço: {servico}")
         c.drawString(10*mm, 20*mm, f"Nome: {nome}")
         
         now = datetime.datetime.now()
         date_time = now.strftime("%d/%m/%Y %H:%M:%S")
-        c.setFont('Arial', 8)  # Reduzido de 10 para 8
+        c.setFont('Helvetica', 8)  # Alterado para Helvetica
         c.drawString(10*mm, 10*mm, f"Emitido em: {date_time}")
         
         c.save()
     return temp_file.name
+
 
 def login_page():
     st.title("Login")
