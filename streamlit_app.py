@@ -1,5 +1,6 @@
 import streamlit as st
-from streamlit_autorefresh import st_autorefresh
+from streamlit_autorefresh 
+import st_autorefresh
 import datetime
 import random
 import csv
