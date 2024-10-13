@@ -232,7 +232,7 @@ def main_app():
             queue_type = st.radio("Tipo de Atendimento", ["Geral", "Prioritário"])
             cpf_cnpj = st.text_input("CPF/CNPJ")
             
-            servicos_disponiveis = ["Consulta", "Pagamento", "Suporte Técnico", "Cadastro"]
+            servicos_disponiveis = ["Registro de Imóveis", "Tabelionato de Notas", "Protesto", "RTDPJ", "Registro Civil"]
             servico = st.selectbox("Escolha o Serviço", servicos_disponiveis)
 
             if st.button("Gerar Senha"):
