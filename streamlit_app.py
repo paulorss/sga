@@ -161,14 +161,32 @@ def generate_password_pdf_in_memory(senha, tipo, nome, servico, company):
     c = canvas.Canvas(pdf_buffer, pagesize=letter)
     
     # Definir a fonte (use fontes padrão, como Helvetica)
-    c.setFont("Helvetica", 12)
+    c.setFont("Helvetica-Bold", 16)
+    
+    # Obter a data e hora atual
+    now = datetime.datetime.now()
+    date_time = now.strftime("%d/%m/%Y %H:%M:%S")
 
-    # Adicionar conteúdo ao PDF
-    c.drawString(100, 750, f"Senha: {senha}")
-    c.drawString(100, 730, f"Tipo: {tipo}")
-    c.drawString(100, 710, f"Nome: {nome}")
-    c.drawString(100, 690, f"Serviço: {servico}")
-    c.drawString(100, 670, f"Empresa: {company}")
+    # Adicionar conteúdo ao PDF na ordem especificada
+    y_position = 750  # Posição inicial do topo
+    line_height = 25  # Altura entre as linhas
+
+    c.drawString(100, y_position, f"Empresa: {company}")
+    y_position -= line_height
+
+    c.drawString(100, y_position, f"Senha: {senha}")
+    y_position -= line_height
+
+    c.drawString(100, y_position, f"Tipo: {tipo}")
+    y_position -= line_height
+
+    c.drawString(100, y_position, f"Nome: {nome}")
+    y_position -= line_height
+
+    c.drawString(100, y_position, f"Serviço: {servico}")
+    y_position -= line_height
+
+    c.drawString(100, y_position, f"Data e hora de Geração da senha: {date_time}")
 
     # Finalizar o PDF
     c.showPage()
