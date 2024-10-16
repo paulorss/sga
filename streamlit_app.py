@@ -16,6 +16,9 @@ from reportlab.pdfbase.ttfonts import TTFont
 import base64
 from io import BytesIO
 import hydralit_components as hc
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+from io import BytesIO
 
 st.set_page_config(
     page_title="SGA - Senhas",
@@ -151,33 +154,37 @@ def get_last_called_password(csv_file):
     return None, None, None
 
 def generate_password_pdf_in_memory(senha, tipo, nome, servico, company):
-    pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
+    # Criar um buffer de bytes para gerar o PDF em memória
+    pdf_buffer = BytesIO()
     
-    buffer = BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A7)
+    # Inicializar o canvas com o buffer
+    c = canvas.Canvas(pdf_buffer, pagesize=letter)
     
-    c.setFont('Arial', 10)
-    c.drawString(10 * mm, 60 * mm, f"Senhas - {company}")
-    
-    c.setFont('Arial', 10)
-    c.drawString(10 * mm, 40 * mm, senha)
-    
-    c.setFont('Arial', 8)
-    c.drawString(10 * mm, 30 * mm, f"Tipo: {tipo}")
-    c.drawString(10 * mm, 25 * mm, f"Serviço: {servico}")
-    c.drawString(10 * mm, 20 * mm, f"Nome: {nome}")
-    
-    now = datetime.datetime.now()
-    date_time = now.strftime("%d/%m/%Y %H:%M:%S")
-    c.drawString(10 * mm, 10 * mm, f"Emitido em: {date_time}")
-    
-    c.save()
-    buffer.seek(0)
-    return buffer.getvalue()
+    # Definir a fonte (use fontes padrão, como Helvetica)
+    c.setFont("Helvetica", 12)
 
-def get_pdf_download_link(pdf_buffer):
-    b64 = base64.b64encode(pdf_buffer.getvalue()).decode()
-    return f'<a href="data:application/pdf;base64,{b64}" download="senha.pdf">Baixar Senha PDF</a>'
+    # Adicionar conteúdo ao PDF
+    c.drawString(100, 750, f"Senha: {senha}")
+    c.drawString(100, 730, f"Tipo: {tipo}")
+    c.drawString(100, 710, f"Nome: {nome}")
+    c.drawString(100, 690, f"Serviço: {servico}")
+    c.drawString(100, 670, f"Empresa: {company}")
+
+    # Finalizar o PDF
+    c.showPage()
+    c.save()
+
+    # Mover o ponteiro de leitura para o início do buffer
+    pdf_buffer.seek(0)
+
+    # Retornar o PDF como bytes
+    return pdf_buffer.getvalue()
+
+def get_pdf_download_link(pdf_data):
+    # Use the bytes buffer directly
+    b64 = base64.b64encode(pdf_data).decode()  # Encode in base64
+    href = f'<a href="data:application/pdf;base64,{b64}" download="senha.pdf">Baixar Senha PDF</a>'
+    return href
 
 def add_to_queue_and_generate_pdf(csv_file, senha, tipo, servico, nome, company):
     # Adicionar à fila
@@ -191,6 +198,40 @@ def add_to_queue_and_generate_pdf(csv_file, senha, tipo, servico, nome, company)
     # Gerar PDF
     pdf_buffer = generate_password_pdf_in_memory(senha, tipo, nome, servico, company)
     return pdf_buffer
+
+def generate_password_html(senha, tipo, nome, servico, company):
+    now = datetime.datetime.now()
+    date_time = now.strftime("%d/%m/%Y %H:%M:%S")
+    
+    html_content = f"""
+    <html>
+    <head>
+        <title>Senha - {company}</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; text-align: center; }}
+            .container {{ border: 2px solid #000; padding: 20px; width: 300px; margin: 0 auto; }}
+            .senha {{ font-size: 24px; font-weight: bold; margin: 20px 0; }}
+            .info {{ font-size: 14px; margin: 10px 0; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h2>Senhas - {company}</h2>
+            <div class="senha">{senha}</div>
+            <div class="info">Tipo: {tipo}</div>
+            <div class="info">Serviço: {servico}</div>
+            <div class="info">Nome: {nome}</div>
+            <div class="info">Emitido em: {date_time}</div>
+        </div>
+        <script>
+            window.print();
+            window.onafterprint = function() {{ window.close(); }};
+        </script>
+    </body>
+    </html>
+    """
+    return html_content
+
 
 def main_app():
     csv_file = get_csv_file(st.session_state.company)
@@ -216,6 +257,17 @@ def main_app():
 
     tab1, tab2, tab3 = st.tabs(["Cadastramento e Acionamento", "Painel de Chamada", "Auto Atendimento"])
 
+    # Add this JavaScript function to your Streamlit app
+    st.markdown("""
+    <script>
+    function openPrintWindow(htmlContent) {
+        var printWindow = window.open('', '_blank');
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    }
+    </script>
+    """, unsafe_allow_html=True)
+
     with tab1:
         col1, col2 = st.columns(2)
 
@@ -227,28 +279,21 @@ def main_app():
             servicos_disponiveis = ["Registro de Imóveis", "Registro Civil Pessoas Naturais", "Tabelionato de Notas", "Protesto", "Registro de Títulos e Documentos", "Registro Civil Pessoas Jurídicas"]
             servico = st.selectbox("Escolha o Serviço", servicos_disponiveis, key="servico_tab1")
 
-            if 'pdf_content' not in st.session_state:
-                st.session_state.pdf_content = None
-            if 'password' not in st.session_state:
-                st.session_state.password = None
+            if 'pdf_data' not in st.session_state:
+                st.session_state.pdf_data = None
 
             if st.button("Gerar Senha", key="gerar_senha_tab1"):
                 if nome:
-                    st.session_state.password = generate_password("G" if queue_type == "Geral" else "P")
-                    add_to_queue(csv_file, st.session_state.password, queue_type, servico, nome)
-                    st.session_state.pdf_content = generate_password_pdf_in_memory(st.session_state.password, queue_type, nome, servico, st.session_state.company)
-                    st.success(f"Senha gerada: {st.session_state.password}")
+                    senha = generate_password("G" if queue_type == "Geral" else "P")
+                    st.session_state.pdf_data = add_to_queue_and_generate_pdf(csv_file, senha, queue_type, servico, nome, st.session_state.company)
+                    st.success(f"Senha gerada: {senha}")
                 else:
                     st.error("Por favor, insira o nome do cliente.")
 
-            if st.session_state.pdf_content is not None:
-                st.download_button(
-                    label="Baixar Senha PDF",
-                    data=st.session_state.pdf_content,
-                    file_name="senha.pdf",
-                    mime="application/pdf",
-                    key="download_button_tab1"
-                )
+            # Display PDF download link if pdf_data exists
+            if st.session_state.pdf_data is not None:
+                pdf_download_link = get_pdf_download_link(st.session_state.pdf_data)
+                st.markdown(pdf_download_link, unsafe_allow_html=True)
 
         with col2:
             st.subheader("Filas de Atendimento")
@@ -317,16 +362,15 @@ def main_app():
             if nome:
                 password = generate_password("G" if queue_type == "Geral" else "P")
                 add_to_queue(csv_file, password, queue_type, servico, nome)
-                pdf_content = generate_password_pdf_in_memory(password, queue_type, nome, servico, st.session_state.company)
+                html_content = generate_password_html(password, queue_type, nome, servico, st.session_state.company)
                 st.success(f"Sua senha foi gerada: {password}")
                 
-                st.download_button(
-                    label="Baixar Minha Senha PDF",
-                    data=pdf_content,
-                    file_name="minha_senha.pdf",
-                    mime="application/pdf",
-                    key="download_button_tab3"
-                )
+                encoded_html = base64.b64encode(html_content.encode()).decode()
+                st.markdown(f"""
+                <button onclick="openPrintWindow(atob('{encoded_html}'))">
+                    Imprimir Minha Senha
+                </button>
+                """, unsafe_allow_html=True)
             else:
                 st.error("Por favor, insira seu nome.")
 
