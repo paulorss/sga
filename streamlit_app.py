@@ -153,6 +153,9 @@ def get_last_called_password(csv_file):
     
     return None, None, None
 
+import pytz
+
+
 def generate_password_pdf_in_memory(senha, tipo, nome, servico, company):
     # Criar um buffer de bytes para gerar o PDF em memória
     pdf_buffer = BytesIO()
@@ -164,7 +167,13 @@ def generate_password_pdf_in_memory(senha, tipo, nome, servico, company):
     c.setFont("Helvetica-Bold", 16)
     
     # Obter a data e hora atual
-    now = datetime.datetime.now()
+    # Definir o fuso horário de São Paulo
+    fuso_horario = pytz.timezone('America/Sao_Paulo')
+
+    # Obter a hora atual no fuso horário de São Paulo
+    now = datetime.datetime.now(fuso_horario)
+
+    # Formatar a data e hora
     date_time = now.strftime("%d/%m/%Y %H:%M:%S")
 
     # Adicionar conteúdo ao PDF na ordem especificada
