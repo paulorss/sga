@@ -173,7 +173,7 @@ def generate_password_pdf_in_memory(senha, tipo, nome, servico, company):
     
     c.save()
     buffer.seek(0)
-    return buffer
+    return buffer.getvalue()
 
 def get_pdf_download_link(pdf_buffer):
     b64 = base64.b64encode(pdf_buffer.getvalue()).decode()
@@ -227,26 +227,27 @@ def main_app():
             servicos_disponiveis = ["Registro de Imóveis", "Registro Civil Pessoas Naturais", "Tabelionato de Notas", "Protesto", "Registro de Títulos e Documentos", "Registro Civil Pessoas Jurídicas"]
             servico = st.selectbox("Escolha o Serviço", servicos_disponiveis, key="servico_tab1")
 
-            if 'pdf_buffer' not in st.session_state:
-                st.session_state.pdf_buffer = None
+            if 'pdf_content' not in st.session_state:
+                st.session_state.pdf_content = None
             if 'password' not in st.session_state:
                 st.session_state.password = None
 
             if st.button("Gerar Senha", key="gerar_senha_tab1"):
                 if nome:
                     st.session_state.password = generate_password("G" if queue_type == "Geral" else "P")
-                    st.session_state.pdf_buffer = add_to_queue_and_generate_pdf(csv_file, st.session_state.password, queue_type, servico, nome, st.session_state.company)
+                    add_to_queue(csv_file, st.session_state.password, queue_type, servico, nome)
+                    st.session_state.pdf_content = generate_password_pdf_in_memory(st.session_state.password, queue_type, nome, servico, st.session_state.company)
                     st.success(f"Senha gerada: {st.session_state.password}")
                 else:
                     st.error("Por favor, insira o nome do cliente.")
 
-            if st.session_state.pdf_buffer is not None:
+            if st.session_state.pdf_content is not None:
                 st.download_button(
                     label="Baixar Senha PDF",
-                    data=st.session_state.pdf_buffer,
+                    data=st.session_state.pdf_content,
                     file_name="senha.pdf",
                     mime="application/pdf",
-                    key="download_button"
+                    key="download_button_tab1"
                 )
 
         with col2:
@@ -315,15 +316,16 @@ def main_app():
         if st.button("Gerar Minha Senha", key="gerar_senha_tab3"):
             if nome:
                 password = generate_password("G" if queue_type == "Geral" else "P")
-                pdf_buffer = add_to_queue_and_generate_pdf(csv_file, password, queue_type, servico, nome, st.session_state.company)
+                add_to_queue(csv_file, password, queue_type, servico, nome)
+                pdf_content = generate_password_pdf_in_memory(password, queue_type, nome, servico, st.session_state.company)
                 st.success(f"Sua senha foi gerada: {password}")
                 
-                # Oferecer o download do PDF
                 st.download_button(
                     label="Baixar Minha Senha PDF",
-                    data=pdf_buffer,
+                    data=pdf_content,
                     file_name="minha_senha.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
+                    key="download_button_tab3"
                 )
             else:
                 st.error("Por favor, insira seu nome.")
