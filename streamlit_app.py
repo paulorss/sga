@@ -59,15 +59,24 @@ def create_user(username, password, company):
             return True
     return False
 
-# Adicione estas funções no início do código, junto com as outras funções
+# 1. Adicione estas funções no início do seu código, junto com as outras funções
+def get_base64_audio():
+    # Som padrão em base64 caso não encontre o arquivo
+    return """
+    SUQzBAAAAAABE1RYWFgAAAAXAAAATWFqb3JfQnJhbmQATmVybyBXYXZlVFhYWAAAABcAAABN
+    aW5vcl9WZXJzaW9uADIuMC4wVFhYWAAAABAAAABDb21wYXRpYmxlX0JyYW5kAFRYWFgAAAAW
+    AAAASVNSQwBOZXJvIFdhdmUgRWRpdG9yVElUMgAAABgAAABUaXRsZQBEaW5nIFNvdW5kIEVm
+    ZmVjdFRBTEIAAAAUAAAAQWxidW0AU291bmQgRWZmZWN0c1RQRTEAAAAWAAAAUG9zaXRpb25f
+    VG90YWwAMDAwMDAxVFBFMgAAABYAAABQb3NpdGlvbl9DdXJyZW50ADAwMDAwMVRMRU4AAAAY
+    AAAATGVuZ3RoX01pbGxpc2Vjb25kcwAwMDAwMFRMRU4AAAAWAAAATGVuZ3RoX0J5dGVzADAw
+    MDAwMDAwVFlFUgAAAAQAAAAyMDIx
+    """
 
-# Versão alternativa usando arquivo de áudio externo
 def get_audio_file_content():
     try:
         with open('sound/ding.mp3', 'rb') as audio_file:
             return base64.b64encode(audio_file.read()).decode()
     except FileNotFoundError:
-        # Retorna um som padrão em base64 se o arquivo não for encontrado
         return get_base64_audio()
 
 def play_sound():
@@ -379,16 +388,6 @@ def main_app():
                 key="counter_number"
             )
             
-            st.divider()
-            
-            st.success("Fila Geral:")
-            display_queue(csv_file, "Geral")
-            st.divider()
-            
-            st.warning("Fila Prioritária:")
-            display_queue(csv_file, "Prioritário")
-            
-            # Agora, modifique a parte do código que chama a próxima senha
             if st.button("Chamar Próxima Senha"):
                 senha, nome, tipo, guiche, servico = call_next_password(
                     csv_file, 
@@ -400,7 +399,7 @@ def main_app():
                     st.session_state.last_called = (senha, nome, tipo, guiche, servico)
                     st.success(f"Senha chamada: {senha} - Usuário: {nome} - Tipo: {tipo}")
                     st.success(f"Dirija-se ao Guichê {guiche} - Serviço: {servico}")
-                    play_sound()  # Reproduz o som
+                    play_sound()  # Aqui é onde o som será reproduzido
                     st.session_state.update_counter += 1
                     st.rerun()
                 else:
