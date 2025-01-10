@@ -214,8 +214,8 @@ def get_pdf_download_link(pdf_data):
     href = f'<a href="data:application/pdf;base64,{b64}" download="senha.pdf">Baixar Senha PDF</a>'
     return href
 
-# Atualizar a função add_to_queue_and_generate_pdf
 def add_to_queue_and_generate_pdf(csv_file, senha, tipo, servico, nome, company):
+    # Primeiro adicionar à fila
     now = get_brasilia_time()
     data = now.strftime("%d/%m/%Y")
     hora = now.strftime("%H:%M:%S")
@@ -223,8 +223,13 @@ def add_to_queue_and_generate_pdf(csv_file, senha, tipo, servico, nome, company)
         writer = csv.writer(file)
         writer.writerow([get_next_id(csv_file), senha, tipo, servico, nome, data, hora, 0, ''])
     
-    pdf_buffer = generate_password_pdf_in_memory(senha, tipo, nome, servico, company)
-    return pdf_buffer
+    # Depois gerar o PDF
+    try:
+        pdf_buffer = generate_password_pdf_in_memory(senha, tipo, nome, servico, company)
+        return pdf_buffer
+    except Exception as e:
+        st.error(f"Erro ao gerar PDF: {str(e)}")
+        return None
 
 # Atualizar a função generate_password_html
 def generate_password_html(senha, tipo, nome, servico, company):
@@ -302,25 +307,34 @@ def main_app():
     with tab1:
         col1, col2 = st.columns(2)
 
+        # Atualizar a parte do código que lida com a geração e download do PDF em tab1
         with col1:
             st.subheader("Emitir Nova Senha")
             nome = st.text_input("Nome do Cliente", key="nome_cliente_tab1")
             queue_type = st.radio("Tipo de Atendimento", ["Geral", "Prioritário"], key="queue_type_tab1")
             servico = st.selectbox("Escolha o Serviço", servicos_disponiveis, key="servico_tab1")
-
+        
             if 'pdf_data' not in st.session_state:
                 st.session_state.pdf_data = None
-
+        
             if st.button("Gerar Senha", key="gerar_senha_tab1"):
                 if nome:
                     senha = generate_password("G" if queue_type == "Geral" else "P")
-                    st.session_state.pdf_data = add_to_queue_and_generate_pdf(
+                    pdf_data = add_to_queue_and_generate_pdf(
                         csv_file, senha, queue_type, servico, nome, st.session_state.company
                     )
+                    st.session_state.pdf_data = pdf_data
+                    st.session_state.last_senha = senha
                     st.success(f"Senha gerada: {senha}")
+                    
+                    # Gerar o link de download logo após gerar o PDF
+                    if pdf_data:
+                        pdf_download_link = get_pdf_download_link(pdf_data)
+                        st.markdown(pdf_download_link, unsafe_allow_html=True)
                 else:
                     st.error("Por favor, insira o nome do cliente.")
-
+        
+            # Manter o link de download visível mesmo após rerun
             if st.session_state.pdf_data is not None:
                 pdf_download_link = get_pdf_download_link(st.session_state.pdf_data)
                 st.markdown(pdf_download_link, unsafe_allow_html=True)
