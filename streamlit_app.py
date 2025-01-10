@@ -94,7 +94,12 @@ def display_queue(csv_file, queue_type):
     with open(csv_file, 'r') as file:
         reader = csv.reader(file)
         next(reader)  # Skip header
-        rows = [row for row in reader if row[2] == queue_type and row[7] == '0']
+        rows = []
+        for row in reader:
+            if len(row) < 9:  # Se não tiver o campo guiche
+                row.append('')  # Adiciona campo vazio para guiche
+            if row[2] == queue_type and row[7] == '0':
+                rows.append(row)
     
     if rows:
         for row in rows:
@@ -106,27 +111,35 @@ def call_next_password(csv_file, company, selected_service, counter_number):
     with open(csv_file, 'r') as file:
         reader = csv.reader(file)
         rows = list(reader)
-    
-    # First try to find a priority ticket for the selected service
-    prioritario = next((row for row in rows if row[2] == 'Prioritário' and 
-                       row[3] == selected_service and row[7] == '0'), None)
-    
-    # If no priority ticket, look for a general ticket
-    geral = next((row for row in rows if row[2] == 'Geral' and 
-                 row[3] == selected_service and row[7] == '0'), None)
-    
-    row = prioritario or geral
-    
-    if row:
-        row[7] = '1'  # Mark as attended
-        row[8] = str(counter_number)  # Add counter number
-        with open(csv_file, 'w', newline='') as file:
-            writer = csv.writer(file)
-            writer.writerows(rows)
-        update_last_called(company, row[1], row[4], row[2], counter_number, selected_service)
-        return row[1], row[4], row[2], counter_number, selected_service
-    else:
-        return None, None, None, None, None
+        header = rows[0]
+        
+        # Garantir que todas as linhas tenham o campo guiche
+        normalized_rows = [header]  # Manter o cabeçalho
+        for row in rows[1:]:  # Para todas as outras linhas
+            if len(row) < 9:  # Se não tiver o campo guiche
+                row.append('')  # Adiciona campo vazio para guiche
+            normalized_rows.append(row)
+        
+        # First try to find a priority ticket for the selected service
+        prioritario = next((row for row in normalized_rows[1:] if row[2] == 'Prioritário' and 
+                          row[3] == selected_service and row[7] == '0'), None)
+        
+        # If no priority ticket, look for a general ticket
+        geral = next((row for row in normalized_rows[1:] if row[2] == 'Geral' and 
+                     row[3] == selected_service and row[7] == '0'), None)
+        
+        row = prioritario or geral
+        
+        if row:
+            row[7] = '1'  # Mark as attended
+            row[8] = str(counter_number)  # Add counter number
+            with open(csv_file, 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerows(normalized_rows)
+            update_last_called(company, row[1], row[4], row[2], counter_number, selected_service)
+            return row[1], row[4], row[2], counter_number, selected_service
+        else:
+            return None, None, None, None, None
 
 def update_last_called(company, senha, nome, tipo, counter, service):
     data = {
@@ -374,22 +387,31 @@ def main_app():
             with open(csv_file, 'r') as file:
                 reader = csv.reader(file)
                 rows = list(reader)[1:]  # Ignorar o cabeçalho
+                
+                # Garantir que todas as linhas tenham o campo guiche
+                normalized_rows = []
+                for row in rows:
+                    if len(row) < 9:  # Se não tiver o campo guiche
+                        row.append('')  # Adiciona campo vazio para guiche
+                    normalized_rows.append(row)
             
-            called_passwords = [row for row in reversed(rows) if row[7] == '1'][:5]  # Pegando as últimas 5 senhas chamadas
+            called_passwords = [row for row in reversed(normalized_rows) if row[7] == '1'][:5]
             
             theme_neutral = {'bgcolor': '#f9f9f9','title_color': 'orange',
-                           'content_color': 'orange','progress_color': 'orange',
-                           'icon_color': 'orange', 'icon': 'fa fa-question-circle'}
+                            'content_color': 'orange','progress_color': 'orange',
+                            'icon_color': 'orange', 'icon': 'fa fa-question-circle'}
             
             for i, row in enumerate(called_passwords):
+                guiche_info = f"\nGuichê: {row[8]}" if row[8] else ""
                 hc.info_card(
                     title=f"Senha: {row[1]} ({row[2]})",
-                    content=f"Usuário: {row[4]}\nGuichê: {row[8]}\nServiço: {row[3]}", 
+                    content=f"Usuário: {row[4]}{guiche_info}\nServiço: {row[3]}", 
                     sentiment='neutral',
                     theme_override=theme_neutral,
                     bar_value=100,
                     key=f"last_five_{i}_{row[1]}_{st.session_state.update_counter}"
                 )
+
 
     with tab3:
         st.subheader("Auto Atendimento")
