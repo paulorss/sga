@@ -78,13 +78,19 @@ def create_csv_if_not_exists(csv_file):
 def generate_password(prefix):
     return f"{prefix}{random.randint(1, 999):03d}"
 
+# Função auxiliar para obter o horário atual de Brasília
+def get_brasilia_time():
+    fuso_horario = pytz.timezone('America/Sao_Paulo')
+    return datetime.datetime.now(fuso_horario)
+
 def add_to_queue(csv_file, senha, tipo, servico, nome):
-    now = datetime.datetime.now()
+    now = get_brasilia_time()
     data = now.strftime("%d/%m/%Y")
     hora = now.strftime("%H:%M:%S")
     with open(csv_file, 'a', newline='') as file:
         writer = csv.writer(file)
         writer.writerow([get_next_id(csv_file), senha, tipo, servico, nome, data, hora, 0, ''])
+
 
 def get_next_id(csv_file):
     with open(csv_file, 'r') as file:
@@ -169,13 +175,13 @@ def get_last_called_from_file(company):
         )
     return None, None, None, 0, '', ''
 
+# Atualizar a função generate_password_pdf_in_memory
 def generate_password_pdf_in_memory(senha, tipo, nome, servico, company):
     pdf_buffer = BytesIO()
     c = canvas.Canvas(pdf_buffer, pagesize=letter)
     c.setFont("Helvetica-Bold", 16)
     
-    fuso_horario = pytz.timezone('America/Sao_Paulo')
-    now = datetime.datetime.now(fuso_horario)
+    now = get_brasilia_time()
     date_time = now.strftime("%d/%m/%Y %H:%M:%S")
 
     y_position = 750
@@ -208,8 +214,9 @@ def get_pdf_download_link(pdf_data):
     href = f'<a href="data:application/pdf;base64,{b64}" download="senha.pdf">Baixar Senha PDF</a>'
     return href
 
+# Atualizar a função add_to_queue_and_generate_pdf
 def add_to_queue_and_generate_pdf(csv_file, senha, tipo, servico, nome, company):
-    now = datetime.datetime.now()
+    now = get_brasilia_time()
     data = now.strftime("%d/%m/%Y")
     hora = now.strftime("%H:%M:%S")
     with open(csv_file, 'a', newline='') as file:
@@ -219,8 +226,9 @@ def add_to_queue_and_generate_pdf(csv_file, senha, tipo, servico, nome, company)
     pdf_buffer = generate_password_pdf_in_memory(senha, tipo, nome, servico, company)
     return pdf_buffer
 
+# Atualizar a função generate_password_html
 def generate_password_html(senha, tipo, nome, servico, company):
-    now = datetime.datetime.now()
+    now = get_brasilia_time()
     date_time = now.strftime("%d/%m/%Y %H:%M:%S")
     
     html_content = f"""
