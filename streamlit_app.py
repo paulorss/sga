@@ -59,6 +59,36 @@ def create_user(username, password, company):
             return True
     return False
 
+# Adicione estas funções no início do código, junto com as outras funções
+
+def get_base64_audio():
+    # Este é um pequeno arquivo de áudio em base64 (um "ding" simples)
+    # Você pode substituir por outro som de sua preferência
+    audio_base64 = """
+    SUQzBAAAAAABE1RYWFgAAAAXAAAATWFqb3JfQnJhbmQATmVybyBXYXZlVFhYWAAAABcAAABN
+    aW5vcl9WZXJzaW9uADIuMC4wVFhYWAAAABAAAABDb21wYXRpYmxlX0JyYW5kAFRYWFgAAAAW
+    AAAASVNSQwBOZXJvIFdhdmUgRWRpdG9yVElUMgAAABgAAABUaXRsZQBEaW5nIFNvdW5kIEVm
+    ZmVjdFRBTEIAAAAUAAAAQWxidW0AU291bmQgRWZmZWN0c1RQRTEAAAAWAAAAUG9zaXRpb25f
+    VG90YWwAMDAwMDAxVFBFMgAAABYAAABQb3NpdGlvbl9DdXJyZW50ADAwMDAwMVRMRU4AAAAY
+    AAAATGVuZ3RoX01pbGxpc2Vjb25kcwAwMDAwMFRMRU4AAAAWAAAATGVuZ3RoX0J5dGVzADAw
+    MDAwMDAwVFlFUgAAAAQAAAAyMDIx//uQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSA
+    AAAEVEFHAAAABQAAADIwMjEAVFlFUgAAAAQAAAAyMDIx//uQZAAP8AAAaQAAAAgAAA0gAAAB
+    AAABpAAAACAAADSAAAAEVEFHAAAABQAAADIwMjEAVFlFUgAAAAQAAAAyMDIx//uQZAAP8AAA
+    aQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVEFHAAAABQAAADIwMjEA
+    """
+    return audio_base64
+
+def play_sound():
+    audio_base64 = get_base64_audio()
+    audio_html = f"""
+        <audio autoplay>
+            <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
+        </audio>
+    """
+    st.markdown(audio_html, unsafe_allow_html=True)
+
+
+
 def authenticate(username, password):
     with open(USERS_FILE, 'r') as file:
         users = json.load(file)
@@ -366,6 +396,7 @@ def main_app():
             st.warning("Fila Prioritária:")
             display_queue(csv_file, "Prioritário")
             
+            # Agora, modifique a parte do código que chama a próxima senha
             if st.button("Chamar Próxima Senha"):
                 senha, nome, tipo, guiche, servico = call_next_password(
                     csv_file, 
@@ -377,6 +408,7 @@ def main_app():
                     st.session_state.last_called = (senha, nome, tipo, guiche, servico)
                     st.success(f"Senha chamada: {senha} - Usuário: {nome} - Tipo: {tipo}")
                     st.success(f"Dirija-se ao Guichê {guiche} - Serviço: {servico}")
+                    play_sound()  # Reproduz o som
                     st.session_state.update_counter += 1
                     st.rerun()
                 else:
