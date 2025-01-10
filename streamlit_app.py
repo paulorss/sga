@@ -72,7 +72,7 @@ def create_csv_if_not_exists(csv_file):
     if not os.path.exists(csv_file):
         with open(csv_file, 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['id', 'senha', 'tipo', 'serviço', 'nome', 'data', 'hora', 'atendido'])
+            writer.writerow(['id', 'senha', 'tipo', 'serviço', 'nome', 'data', 'hora', 'atendido', 'guiche'])
 
 def generate_password(prefix):
     return f"{prefix}{random.randint(1, 999):03d}"
@@ -102,44 +102,56 @@ def display_queue(csv_file, queue_type):
         st.error("Fila vazia.")
 
 # Atualize também a função call_next_password
-def call_next_password(csv_file, company):
+# Update the call_next_password function to include service type and counter
+def call_next_password(csv_file, company, selected_service, counter_number):
     with open(csv_file, 'r') as file:
         reader = csv.reader(file)
         rows = list(reader)
     
-    prioritario = next((row for row in rows if row[2] == 'Prioritário' and row[7] == '0'), None)
-    geral = next((row for row in rows if row[2] == 'Geral' and row[7] == '0'), None)
+    # First try to find a priority ticket for the selected service
+    prioritario = next((row for row in rows if row[2] == 'Prioritário' and 
+                       row[3] == selected_service and row[7] == '0'), None)
+    
+    # If no priority ticket, look for a general ticket
+    geral = next((row for row in rows if row[2] == 'Geral' and 
+                 row[3] == selected_service and row[7] == '0'), None)
     
     row = prioritario or geral
     
     if row:
-        row[7] = '1'  # Marcar como atendido
+        row[7] = '1'  # Mark as attended
+        row[8] = str(counter_number)  # Add counter number
         with open(csv_file, 'w', newline='') as file:
             writer = csv.writer(file)
             writer.writerows(rows)
-        update_last_called(company, row[1], row[4], row[2])  # row[4] agora é 'nome' em vez de 'cpf_cnpj'
-        return row[1], row[4], row[2]
+        update_last_called(company, row[1], row[4], row[2], counter_number, selected_service)
+        return row[1], row[4], row[2], counter_number
     else:
-        return None, None, None
+        return None, None, None, None
 
-def update_last_called(company, senha, nome, tipo):
+ Update the update_last_called function
+def update_last_called(company, senha, nome, tipo, counter, service):
     data = {
         'senha': senha,
-        'nome': nome,  # Alterado de 'cpf_cnpj' para 'nome'
+        'nome': nome,
         'tipo': tipo,
+        'guiche': counter,
+        'servico': service,
         'timestamp': time.time()
     }
     file_path = os.path.join(COMPANIES_DIR, f'{company}_last_called.json')
     with open(file_path, 'w') as f:
         json.dump(data, f)
 
+# Update the get_last_called_from_file function
 def get_last_called_from_file(company):
     file_path = os.path.join(COMPANIES_DIR, f'{company}_last_called.json')
     if os.path.exists(file_path):
         with open(file_path, 'r') as f:
             data = json.load(f)
-        return data.get('senha'), data.get('nome'), data.get('tipo'), data.get('timestamp', 0)
-    return None, None, None, 0
+        return (data.get('senha'), data.get('nome'), data.get('tipo'), 
+                data.get('timestamp', 0), data.get('guiche'), data.get('servico'))
+    return None, None, None, 0, None, None
 
 
 def get_last_called_password(csv_file):
@@ -323,41 +335,62 @@ def main_app():
                 st.markdown(pdf_download_link, unsafe_allow_html=True)
 
         with col2:
-            st.subheader("Filas de Atendimento")
-            st.success("Fila Geral:")
-            display_queue(csv_file, "Geral")
-            st.divider()
+            st.subheader("Chamar Próxima Senha")
             
-            st.warning("Fila Prioritária:")
-            display_queue(csv_file, "Prioritário")
+            # Add service selection
+            selected_service = st.selectbox(
+                "Selecione o Serviço para Chamar",
+                servicos_disponiveis,
+                key="service_selection"
+            )
+            
+            # Add counter number input
+            counter_number = st.number_input(
+                "Número do Guichê",
+                min_value=1,
+                max_value=99,
+                value=1,
+                step=1,
+                key="counter_number"
+            )
             
             if st.button("Chamar Próxima Senha"):
-                senha, nome, tipo = call_next_password(csv_file, st.session_state.company)
+                senha, nome, tipo, guiche = call_next_password(
+                    csv_file, 
+                    st.session_state.company,
+                    selected_service,
+                    counter_number
+                )
                 if senha and nome:
-                    st.session_state.last_called = (senha, nome, tipo)
+                    st.session_state.last_called = (senha, nome, tipo, guiche, selected_service)
                     st.success(f"Senha chamada: {senha} - Usuário: {nome} - Tipo: {tipo}")
+                    st.success(f"Dirija-se ao Guichê {guiche} - Serviço: {selected_service}")
                     st.session_state.update_counter += 1
                     st.rerun()
                 else:
-                    st.info("Não há senhas na fila.")
+                    st.info(f"Não há senhas na fila para o serviço: {selected_service}")
 
     with tab2:
         st.subheader("Senha Chamada")
         last_called_placeholder = st.empty()
         last_five_placeholder = st.empty()
-
-        senha, nome, tipo = st.session_state.last_called
-
+    
+        senha, nome, tipo, timestamp, guiche, servico = get_last_called_from_file(st.session_state.company)
+    
         with last_called_placeholder.container():
             if senha and nome:
-                theme_good = {'bgcolor': '#EFF8F7','title_color': 'green','content_color': 'green','icon_color': 'green', 'icon': 'fa fa-check-circle'}
+                theme_good = {'bgcolor': '#EFF8F7','title_color': 'green',
+                             'content_color': 'green','icon_color': 'green', 
+                             'icon': 'fa fa-check-circle'}
                 
-                hc.info_card(title=f"Senha: {senha} ({tipo})",  
-                             content=f"Usuário: {nome}", 
-                             sentiment='good',
-                             bar_value=100,
-                             theme_override=theme_good,
-                             key=f"last_called_{senha}_{st.session_state.update_counter}")
+                hc.info_card(
+                    title=f"Senha: {senha} ({tipo})",  
+                    content=f"Usuário: {nome}\nGuichê: {guiche}\nServiço: {servico}", 
+                    sentiment='good',
+                    bar_value=100,
+                    theme_override=theme_good,
+                    key=f"last_called_{senha}_{st.session_state.update_counter}"
+                )
             else:
                 st.info("Nenhuma senha chamada ainda.")
         
