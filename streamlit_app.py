@@ -129,7 +129,6 @@ def call_next_password(csv_file, company, selected_service, counter_number):
     else:
         return None, None, None, None
 
- Update the update_last_called function
 def update_last_called(company, senha, nome, tipo, counter, service):
     data = {
         'senha': senha,
