@@ -61,25 +61,17 @@ def create_user(username, password, company):
 
 # Adicione estas funções no início do código, junto com as outras funções
 
-def get_base64_audio():
-    # Este é um pequeno arquivo de áudio em base64 (um "ding" simples)
-    # Você pode substituir por outro som de sua preferência
-    audio_base64 = """
-    SUQzBAAAAAABE1RYWFgAAAAXAAAATWFqb3JfQnJhbmQATmVybyBXYXZlVFhYWAAAABcAAABN
-    aW5vcl9WZXJzaW9uADIuMC4wVFhYWAAAABAAAABDb21wYXRpYmxlX0JyYW5kAFRYWFgAAAAW
-    AAAASVNSQwBOZXJvIFdhdmUgRWRpdG9yVElUMgAAABgAAABUaXRsZQBEaW5nIFNvdW5kIEVm
-    ZmVjdFRBTEIAAAAUAAAAQWxidW0AU291bmQgRWZmZWN0c1RQRTEAAAAWAAAAUG9zaXRpb25f
-    VG90YWwAMDAwMDAxVFBFMgAAABYAAABQb3NpdGlvbl9DdXJyZW50ADAwMDAwMVRMRU4AAAAY
-    AAAATGVuZ3RoX01pbGxpc2Vjb25kcwAwMDAwMFRMRU4AAAAWAAAATGVuZ3RoX0J5dGVzADAw
-    MDAwMDAwVFlFUgAAAAQAAAAyMDIx//uQZAAP8AAAaQAAAAgAAA0gAAABAAABpAAAACAAADSA
-    AAAEVEFHAAAABQAAADIwMjEAVFlFUgAAAAQAAAAyMDIx//uQZAAP8AAAaQAAAAgAAA0gAAAB
-    AAABpAAAACAAADSAAAAEVEFHAAAABQAAADIwMjEAVFlFUgAAAAQAAAAyMDIx//uQZAAP8AAA
-    aQAAAAgAAA0gAAABAAABpAAAACAAADSAAAAEVEFHAAAABQAAADIwMjEA
-    """
-    return audio_base64
+# Versão alternativa usando arquivo de áudio externo
+def get_audio_file_content():
+    try:
+        with open('sound/ding.mp3', 'rb') as audio_file:
+            return base64.b64encode(audio_file.read()).decode()
+    except FileNotFoundError:
+        # Retorna um som padrão em base64 se o arquivo não for encontrado
+        return get_base64_audio()
 
 def play_sound():
-    audio_base64 = get_base64_audio()
+    audio_base64 = get_audio_file_content()
     audio_html = f"""
         <audio autoplay>
             <source src="data:audio/mpeg;base64,{audio_base64}" type="audio/mpeg">
